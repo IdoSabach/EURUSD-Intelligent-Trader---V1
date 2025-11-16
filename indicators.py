@@ -32,6 +32,7 @@ class Indicators(DataLoad):
     df[f"ATR_{period}"] = df['TR'].rolling(period).mean()
 
     df.drop(columns=['H-L','H-PC','L-PC','TR'], axis=1, inplace=True, errors='ignore')
+
   
   def run(self):
     self.sma(20)
@@ -39,6 +40,8 @@ class Indicators(DataLoad):
     self.sma(200)
     self.bollinger()
     self.atr()
+    self.data.dropna(inplace=True)
+    
 
   
   

@@ -3,4 +3,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 class BackTester():
-  def __init__(self):
+  def __init__(self, df):
+    super().__init__(df)
+    

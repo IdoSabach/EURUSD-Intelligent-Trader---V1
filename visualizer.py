@@ -93,3 +93,35 @@ class Visualizer():
         plt.grid(True)
         plt.title("Full Strategy View (Price + SMA/EMA + Bollinger)")
         plt.show()
+
+    def plot_entries(self):
+        plt.figure(figsize=(18, 8))
+
+        # --- Price + Indicators ---
+        plt.plot(self.df.index, self.df['price'], label='Price', linewidth=1)
+        plt.plot(self.df.index, self.df['SMA_20'], label='SMA 20', alpha=0.7)
+        plt.plot(self.df.index, self.df['SMA_100'], label='SMA 100', alpha=0.7)
+        plt.plot(self.df.index, self.df['SMA_200'], label='SMA 200', alpha=0.7)
+
+        # --- Bollinger Bands ---
+        plt.plot(self.df.index, self.df['BB_upper'], label='BB Upper', linestyle='--', alpha=0.4)
+        plt.plot(self.df.index, self.df['BB_lower'], label='BB Lower', linestyle='--', alpha=0.4)
+
+        # --- Entry/Exit Points ---
+        long_entries = self.df[self.df['position'] == 1]
+        short_entries = self.df[self.df['position'] == -1]
+
+        # Green dots = LONG
+        plt.scatter(long_entries.index, long_entries['price'],
+                    marker='^', color='green', s=80, label='LONG Entry')
+
+        # Red dots = SHORT
+        plt.scatter(short_entries.index, short_entries['price'],
+                    marker='v', color='red', s=80, label='SHORT Entry')
+
+        plt.title("Price + Strategy Entry Signals")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+
