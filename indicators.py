@@ -8,10 +8,19 @@ class Indicators(DataLoad):
     self.process_data()
 
   def sma(self, period):
+    '''
+    Calculate a Sma \n
+    period: num of last candle mean
+    '''
     self.data[f"SMA_{period}"] = self.data['price'].rolling(period).mean()
     return self.data
   
   def bollinger(self, period=20, std=2):
+    '''
+    Calculate a BB = Bollinger Bands \n
+    period: default 20 (sma) \n
+    std: default 2 (std)
+    '''
     ma = self.data['price'].rolling(period).mean()
     sd = self.data['price'].rolling(period).std()
 
@@ -22,6 +31,10 @@ class Indicators(DataLoad):
     return self.data
   
   def atr(self, period=14):
+    '''
+    Calculate a ATR \n
+    period: default 20 (sma)
+    '''
     df = self.data
 
     df['H-L'] = df['High'] - df['Low']
