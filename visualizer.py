@@ -125,3 +125,42 @@ class Visualizer():
         plt.tight_layout()
         plt.show()
 
+    # def plot_trades(self):
+    #     df = self.df.copy()
+
+    #     plt.figure(figsize=(22, 10))
+
+    #     # === גרף מחיר + אינדיקטורים ===
+    #     plt.plot(df.index, df['price'], label='Price', color='white', linewidth=1.5)
+    #     plt.plot(df.index, df['SMA_20'], label='SMA 20', color='yellow', linewidth=1)
+    #     plt.plot(df.index, df['SMA_100'], label='SMA 100', color='orange', linewidth=1)
+    #     plt.plot(df.index, df['SMA_200'], label='SMA 200', color='red', linewidth=1)
+
+    #     # Bollinger Bands
+    #     plt.plot(df.index, df['BB_upper'], label='BB Upper', color='cyan', alpha=0.6)
+    #     plt.plot(df.index, df['BB_mid'], label='BB Mid', color='blue', alpha=0.6)
+    #     plt.plot(df.index, df['BB_lower'], label='BB Lower', color='cyan', alpha=0.6)
+
+    #     # === נקודות כניסה ויציאה ===
+    #     long_entries = df[(df['position'] == 1) & (df['position'].shift(1) == 0)]
+    #     short_entries = df[(df['position'] == -1) & (df['position'].shift(1) == 0)]
+    #     exits = df[(df['position'] == 0) & (df['position'].shift(1) != 0)]
+
+    #     # כניסות
+    #     plt.scatter(long_entries.index, long_entries['price'],
+    #                 color='lime', s=120, marker='^', label='Long Entry', zorder=10)
+
+    #     plt.scatter(short_entries.index, short_entries['price'],
+    #                 color='red', s=120, marker='v', label='Short Entry', zorder=10)
+
+    #     # יציאות
+    #     plt.scatter(exits.index, exits['price'],
+    #                 color='orange', s=140, marker='o', label='Exit', zorder=10)
+
+    #     # === עיצוב גרף ===
+    #     plt.title("Trade Entries / Exits + Indicators", fontsize=20, color='white')
+    #     plt.grid(alpha=0.3)
+    #     plt.legend()
+    #     plt.tight_layout()
+    #     plt.show()
+

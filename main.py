@@ -11,8 +11,13 @@ import seaborn as sns
 df = pd.read_csv('data/df60d.csv', parse_dates=['Datetime'], index_col='Datetime')
 bot = Strategy(df)
 print(bot.data)
-bot.run()
-print(bot.data)
-print(bot.data['position'].value_counts())
 viz = Visualizer(bot.data)
-viz.plot_entries()
+
+bot.data.to_csv("data/results.csv", index=False)
+print(bot.data['long_entry'].value_counts())
+print(bot.data['short_entry'].value_counts())
+print(bot.data['short_exit'].value_counts())
+print(bot.data['short_exit'].value_counts())
+# print(bot.data['action'].value_counts())
+# print(bot.data['final_position'].value_counts())
+
