@@ -21,3 +21,4 @@ print(bot.data['short_exit'].value_counts())
 # print(bot.data['action'].value_counts())
 # print(bot.data['final_position'].value_counts())
 
+# viz.plot_trades()

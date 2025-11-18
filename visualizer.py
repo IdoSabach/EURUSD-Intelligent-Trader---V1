@@ -1,10 +1,11 @@
 import matplotlib.pyplot as plt
 plt.style.use('seaborn-v0_8')
+from strategy import Strategy
 
-class Visualizer():
+class Visualizer(Strategy):
 
     def __init__(self, df):
-        self.df = df
+        super().__init__(df)
 
     def plot_atr(self, atr_col='ATR_14'):
         plt.figure(figsize=(20,5))
@@ -162,5 +163,26 @@ class Visualizer():
     #     plt.grid(alpha=0.3)
     #     plt.legend()
     #     plt.tight_layout()
+    #     plt.show()
+
+    # def plot_trades(self):
+    #     df = self.data
+    #     plt.figure(figsize=(18,8))
+    #     plt.plot(df['price'], label='Price', color='white')
+
+    #     # כניסות ויציאות מדויקות
+    #     plt.scatter(df.index, df['price'], 
+    #                 c=df['clean_long_entry'], cmap='Greens', marker='^', label='Long Entry')
+
+    #     plt.scatter(df.index, df['price'], 
+    #                 c=df['clean_long_exit'], cmap='Reds', marker='o', label='Long Exit')
+
+    #     plt.scatter(df.index, df['price'], 
+    #                 c=df['clean_short_entry'], cmap='Greens', marker='v', label='Short Entry')
+
+    #     plt.scatter(df.index, df['price'], 
+    #                 c=df['clean_short_exit'], cmap='Reds', marker='o', label='Short Exit')
+
+    #     plt.legend()
     #     plt.show()
 
