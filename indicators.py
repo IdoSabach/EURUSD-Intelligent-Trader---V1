@@ -5,7 +5,6 @@ from data_loader import DataLoad
 class Indicators(DataLoad):
   def __init__(self, df):
     super().__init__(df)
-    self.process_data()
 
   def sma(self, period):
     '''
@@ -53,7 +52,6 @@ class Indicators(DataLoad):
     self.sma(200)
     self.bollinger()
     self.atr()
-    self.data.dropna(inplace=True)
     
 
   

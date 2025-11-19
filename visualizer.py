@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
 plt.style.use('seaborn-v0_8')
-from strategy import Strategy
+# from strategy import Strategy
 
-class Visualizer(Strategy):
+class Visualizer():
 
     def __init__(self, df):
-        super().__init__(df)
+        self.df = df
 
     def plot_atr(self, atr_col='ATR_14'):
         plt.figure(figsize=(20,5))
@@ -126,63 +126,48 @@ class Visualizer(Strategy):
         plt.tight_layout()
         plt.show()
 
-    # def plot_trades(self):
-    #     df = self.df.copy()
+    def plot_trades(self):
 
-    #     plt.figure(figsize=(22, 10))
+        plt.figure(figsize=(18, 9))
 
-    #     # === גרף מחיר + אינדיקטורים ===
-    #     plt.plot(df.index, df['price'], label='Price', color='white', linewidth=1.5)
-    #     plt.plot(df.index, df['SMA_20'], label='SMA 20', color='yellow', linewidth=1)
-    #     plt.plot(df.index, df['SMA_100'], label='SMA 100', color='orange', linewidth=1)
-    #     plt.plot(df.index, df['SMA_200'], label='SMA 200', color='red', linewidth=1)
+        # ---- גרף מחיר ----
+        plt.plot(self.df.index, self.df['price'], label='Price', color='white', linewidth=1.3)
 
-    #     # Bollinger Bands
-    #     plt.plot(df.index, df['BB_upper'], label='BB Upper', color='cyan', alpha=0.6)
-    #     plt.plot(df.index, df['BB_mid'], label='BB Mid', color='blue', alpha=0.6)
-    #     plt.plot(df.index, df['BB_lower'], label='BB Lower', color='cyan', alpha=0.6)
+        # ---- דוגמא לאינדיקטורים (תוסיף מה שיש לך) ----
+        if 'SMA_20' in self.df.columns:
+            plt.plot(self.df.index, self.df['SMA_20'], label='SMA 20', alpha=0.7)
 
-    #     # === נקודות כניסה ויציאה ===
-    #     long_entries = df[(df['position'] == 1) & (df['position'].shift(1) == 0)]
-    #     short_entries = df[(df['position'] == -1) & (df['position'].shift(1) == 0)]
-    #     exits = df[(df['position'] == 0) & (df['position'].shift(1) != 0)]
+        if 'SMA_50' in self.df.columns:
+            plt.plot(self.df.index, self.df['SMA_100'], label='SMA 50', alpha=0.7)
 
-    #     # כניסות
-    #     plt.scatter(long_entries.index, long_entries['price'],
-    #                 color='lime', s=120, marker='^', label='Long Entry', zorder=10)
+        if 'BB_upper' in self.df.columns and 'BB_lower' in self.df.columns:
+            plt.plot(self.df.index, self.df['BB_upper'], label='Upper BB', alpha=0.5)
+            plt.plot(self.df.index, self.df['BB_lower'], label='Lower BB', alpha=0.5)
 
-    #     plt.scatter(short_entries.index, short_entries['price'],
-    #                 color='red', s=120, marker='v', label='Short Entry', zorder=10)
+        # ---- כניסות (1 → long open, -1 → short open) ----
+        long_entries = self.df[(self.df['trade_state'] == 1) & (self.df['trade_state'].shift(1) != 1)]
+        short_entries = self.df[(self.df['trade_state'] == -1) & (self.df['trade_state'].shift(1) != -1)]
 
-    #     # יציאות
-    #     plt.scatter(exits.index, exits['price'],
-    #                 color='orange', s=140, marker='o', label='Exit', zorder=10)
+        # ---- יציאות (מעבר מ-1 ל-0 או מ-(-1) ל-0) ----
+        long_exits = self.df[(self.df['trade_state'] != 1) & (self.df['trade_state'].shift(1) == 1)]
+        short_exits = self.df[(self.df['trade_state'] != -1) & (self.df['trade_state'].shift(1) == -1)]
 
-    #     # === עיצוב גרף ===
-    #     plt.title("Trade Entries / Exits + Indicators", fontsize=20, color='white')
-    #     plt.grid(alpha=0.3)
-    #     plt.legend()
-    #     plt.tight_layout()
-    #     plt.show()
+        # ---- ציור הנקודות ----
+        plt.scatter(long_entries.index, long_entries['price'], 
+                    marker='^', color='lime', s=120, label='Long Entry')
 
-    # def plot_trades(self):
-    #     df = self.data
-    #     plt.figure(figsize=(18,8))
-    #     plt.plot(df['price'], label='Price', color='white')
+        plt.scatter(long_exits.index, long_exits['price'], 
+                    marker='v', color='red', s=120, label='Long Exit')
 
-    #     # כניסות ויציאות מדויקות
-    #     plt.scatter(df.index, df['price'], 
-    #                 c=df['clean_long_entry'], cmap='Greens', marker='^', label='Long Entry')
+        plt.scatter(short_entries.index, short_entries['price'], 
+                    marker='v', color='orange', s=120, label='Short Entry')
 
-    #     plt.scatter(df.index, df['price'], 
-    #                 c=df['clean_long_exit'], cmap='Reds', marker='o', label='Long Exit')
+        plt.scatter(short_exits.index, short_exits['price'], 
+                    marker='^', color='yellow', s=120, label='Short Exit')
 
-    #     plt.scatter(df.index, df['price'], 
-    #                 c=df['clean_short_entry'], cmap='Greens', marker='v', label='Short Entry')
+        # ---- סגנון ----
+        plt.title('Price Chart with Trades', fontsize=16)
+        plt.legend()
+        plt.grid(alpha=0.3)
 
-    #     plt.scatter(df.index, df['price'], 
-    #                 c=df['clean_short_exit'], cmap='Reds', marker='o', label='Short Exit')
-
-    #     plt.legend()
-    #     plt.show()
-
+        plt.show()
