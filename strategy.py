@@ -6,19 +6,15 @@ class Strategy(Indicators):
     super().__init__(df)
 
 
-  def position(self, mean_ATR2 = 50, range_ATR = 0.6):
+  def position(self, mean_ATR2 = 50, range_ATR = 0.8):
     df = self.data
-    # Default
     df['position'] = 0
     df.loc[df['sessions'] == 'deadzone', 'position'] = 0    
 
     df[f"ATR_{mean_ATR2}"] = df['ATR_14'].rolling(mean_ATR2).mean()
-    # df.dropna(inplace=True)
 
     normal_vol = ((df['ATR_14'] >= range_ATR * df['ATR_50']) & 
-                  (df['ATR_14'] <= (range_ATR*3) * df['ATR_50']))
-    
-    # Trend
+                  (df['ATR_14'] <= (range_ATR*2.5) * df['ATR_50']))
     
     long_trend = ((df['price'] > df['SMA_200']) & 
                   (df['SMA_100'] > df['SMA_200']) & 
@@ -27,12 +23,13 @@ class Strategy(Indicators):
     short_trend = ((df['price'] < df['SMA_200']) & 
                    (df['SMA_100'] < df['SMA_200']) & 
                    (df['SMA_20'] < df['SMA_100']))
-    # Trigger
+
     long_trigger = df['price'] <= df['BB_lower']
     short_trigger = df['price'] >= df['BB_upper']
     
     df.loc[long_trend & long_trigger & normal_vol, 'position'] = 1
     df.loc[short_trend & short_trigger & normal_vol, 'position'] = -1
+
 
   def build_trade_state(self):
     df = self.data
@@ -50,15 +47,15 @@ class Strategy(Indicators):
     df['short_entry_atr'] = df.groupby('short_group')['ATR_14'].transform('first')
 
     # Long exit
-    df['long_sl'] = df['price'] <= df['long_entry_price'] - df['long_entry_atr'] * 1.3
-    df['long_tp'] = df['price'] >= df['long_entry_price'] + df['long_entry_atr'] * 2
+    df['long_sl'] = df['price'] <= df['long_entry_price'] - (df['long_entry_atr'] * 1.3)
+    df['long_tp'] = df['price'] >= df['long_entry_price'] + (df['long_entry_atr'] * 3)
     df['long_exit'] = df['long_sl'] | df['long_tp']
     df['long_exit_cum'] = df.groupby('long_group')['long_exit'].cumsum()
     df['long_active'] = (df['long_group'] > 0) & (df['long_exit_cum'] == 0)
 
     # Short exit
-    df['short_sl'] = df['price'] >= df['short_entry_price'] + df['short_entry_atr'] * 1.3
-    df['short_tp'] = df['price'] <= df['short_entry_price'] - df['short_entry_atr'] * 2
+    df['short_sl'] = df['price'] >= df['short_entry_price'] + (df['short_entry_atr'] * 1.3)
+    df['short_tp'] = df['price'] <= df['short_entry_price'] - (df['short_entry_atr'] * 3)
     df['short_exit'] = df['short_sl'] | df['short_tp']
     df['short_exit_cum'] = df.groupby('short_group')['short_exit'].cumsum()
     df['short_active'] = (df['short_group'] > 0) & (df['short_exit_cum'] == 0)

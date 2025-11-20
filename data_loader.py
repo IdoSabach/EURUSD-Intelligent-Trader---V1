@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import yfinance as yf
 
-df = pd.read_csv('data/df60d.csv', parse_dates=['Datetime'], index_col='Datetime')
+# df = pd.read_csv('data/df60d.csv', parse_dates=['Datetime'], index_col='Datetime')
 
 class DataLoad():
   def __init__(self, df):

@@ -10,15 +10,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 df = pd.read_csv('data/df60d.csv', parse_dates=['Datetime'], index_col='Datetime')
+
+
 bot = Backtester(df)
-bot.run_backtest()
 print(bot.data)
-viz = Visualizer(bot.data)
-
-bot.data.to_csv("data/results.csv", index=False)
-
-# viz.plot_trades()
-bot.summary()
-
-
-
