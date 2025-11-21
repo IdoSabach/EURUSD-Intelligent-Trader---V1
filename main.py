@@ -14,3 +14,8 @@ df = pd.read_csv('data/df60d.csv', parse_dates=['Datetime'], index_col='Datetime
 
 bot = Backtester(df)
 print(bot.data)
+bot.run_backtest()
+print(bot.data)
+bot.data.to_csv('data/results.csv')
+
+bot.print_summary()

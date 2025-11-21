@@ -32,41 +32,61 @@ class Strategy(Indicators):
 
 
   def build_trade_state(self):
-    df = self.data
+        df = self.data
 
-    df['long_entry'] = np.where(df['position'] == 1, 1, 0)
-    df['short_entry'] = np.where(df['position'] == -1, 1, 0)
+        # 1. יצירת אותות כניסה ראשוניים (לפני ניקוי)
+        df['long_entry_raw'] = np.where(df['position'] == 1, 1, 0)
+        df['short_entry_raw'] = np.where(df['position'] == -1, 1, 0)
+        
+        # 2. חישוב טריגרים ליציאה (SL/TP) וקבוצות (כמו קודם, זה נכון)
+        # ------------------------------------------------------------------------
+        df['long_group'] = df['long_entry_raw'].cumsum()
+        df['short_group'] = df['short_entry_raw'].cumsum()
 
-    df['long_group'] = (df['long_entry'] == 1).cumsum()
-    df['short_group'] = (df['short_entry'] == 1).cumsum()
+        df['long_entry_price'] = df.groupby('long_group')['price'].transform('first')
+        df['long_entry_atr'] = df.groupby('long_group')['ATR_14'].transform('first')
 
-    df['long_entry_price'] = df.groupby('long_group')['price'].transform('first')
-    df['long_entry_atr'] = df.groupby('long_group')['ATR_14'].transform('first')
+        df['short_entry_price'] = df.groupby('short_group')['price'].transform('first')
+        df['short_entry_atr'] = df.groupby('short_group')['ATR_14'].transform('first')
 
-    df['short_entry_price'] = df.groupby('short_group')['price'].transform('first')
-    df['short_entry_atr'] = df.groupby('short_group')['ATR_14'].transform('first')
+        # Long exit logic
+        df['long_sl'] = df['price'] <= df['long_entry_price'] - (df['long_entry_atr'] * 1.3)
+        df['long_tp'] = df['price'] >= df['long_entry_price'] + (df['long_entry_atr'] * 4)
+        df['long_exit'] = df['long_sl'] | df['long_tp']
+        df['long_exit_cum'] = df.groupby('long_group')['long_exit'].cumsum()
+        
+        # Short exit logic
+        df['short_sl'] = df['price'] >= df['short_entry_price'] + (df['short_entry_atr'] * 1.3)
+        df['short_tp'] = df['price'] <= df['short_entry_price'] - (df['short_entry_atr'] * 4)
+        df['short_exit'] = df['short_sl'] | df['short_tp']
+        df['short_exit_cum'] = df.groupby('short_group')['short_exit'].cumsum()
+        # ------------------------------------------------------------------------
+        
+        # 3. קביעת המצב הפעיל (מי נשאר בפנים)
+        # טרייד פעיל הוא רק אם: (יש קבוצה) AND (לא הגיע SL/TP)
+        df['long_active'] = (df['long_group'] > 0) & (df['long_exit_cum'] == 0)
+        df['short_active'] = (df['short_group'] > 0) & (df['short_exit_cum'] == 0)
 
-    # Long exit
-    df['long_sl'] = df['price'] <= df['long_entry_price'] - (df['long_entry_atr'] * 1.3)
-    df['long_tp'] = df['price'] >= df['long_entry_price'] + (df['long_entry_atr'] * 3)
-    df['long_exit'] = df['long_sl'] | df['long_tp']
-    df['long_exit_cum'] = df.groupby('long_group')['long_exit'].cumsum()
-    df['long_active'] = (df['long_group'] > 0) & (df['long_exit_cum'] == 0)
+        # 4. ניקוי: השאר רק את הכניסה הראשונה בטרייד (כדי לקבל duration > 0)
+        # זה התיקון המרכזי שמונע כניסות רצופות:
+        # איתות כניסה נחשב רק בנר הראשון של ה-long_active/short_active
+        df['long_entry'] = np.where((df['long_active'] == True) & (df['long_active'].shift(1) == False), 1, 0)
+        df['short_entry'] = np.where((df['short_active'] == True) & (df['short_active'].shift(1) == False), 1, 0)
 
-    # Short exit
-    df['short_sl'] = df['price'] >= df['short_entry_price'] + (df['short_entry_atr'] * 1.3)
-    df['short_tp'] = df['price'] <= df['short_entry_price'] - (df['short_entry_atr'] * 3)
-    df['short_exit'] = df['short_sl'] | df['short_tp']
-    df['short_exit_cum'] = df.groupby('short_group')['short_exit'].cumsum()
-    df['short_active'] = (df['short_group'] > 0) & (df['short_exit_cum'] == 0)
+        # 5. חישוב מחדש של הקבוצות על בסיס הכניסות הנקיות!
+        df['long_group'] = df['long_entry'].cumsum()
+        df['short_group'] = df['short_entry'].cumsum()
 
-    df['trade_state'] = 0
-    df.loc[df['long_active'], 'trade_state'] = 1
-    df.loc[df['short_active'], 'trade_state'] = -1
+        # 6. יצירת trade_state סופי (המצב הוקטורי נשמר)
+        df['trade_state'] = 0
+        df.loc[df['long_active'], 'trade_state'] = 1
+        df.loc[df['short_active'], 'trade_state'] = -1
 
-    df.drop(columns=['long_group', 'short_group', 'long_entry_price', 'long_entry_atr', 'short_entry_price',
-                     'short_entry_atr', 'long_sl', 'long_tp', 'long_exit', 'long_exit_cum', 'long_active', 'short_sl',
-                      'short_tp', 'short_exit', 'short_exit_cum', 'short_active'], inplace=True)
+        # 7. ניקוי עמודות עזר (כמו קודם)
+        df.drop(columns=['long_group', 'short_group', 'long_entry_price', 'long_entry_atr', 'short_entry_price',
+                         'short_entry_atr', 'long_sl', 'long_tp', 'long_exit', 'long_exit_cum', 'long_active', 'short_sl',
+                         'short_tp', 'short_exit', 'short_exit_cum', 'short_active', 'long_entry_raw', 'short_entry_raw'],
+                         inplace=True, errors='ignore')
 
 
   def run(self):
