@@ -1,46 +1,44 @@
-import numpy as np
 import pandas as pd
-from data_loader import DataLoad
+import numpy as np
 
-class Indicators(DataLoad):
-  def __init__(self, df):
-    super().__init__(df)
+class Indicators:
+    def __init__(self, df):
+        self.data = df.copy()
 
-  def sma(self, period):
-    self.data[f"SMA_{period}"] = self.data['price'].rolling(period).mean()
-    return self.data
-  
-  def bollinger(self, period=20, std=2):
-    ma = self.data['price'].rolling(period).mean()
-    sd = self.data['price'].rolling(period).std()
-
-    self.data['BB_mid'] = ma
-    self.data['BB_upper'] = ma + std * sd 
-    self.data['BB_lower'] = ma - std * sd
-
-    return self.data
-  
-  def atr(self, period=14):
-    df = self.data
-
-    df['H-L'] = df['High'] - df['Low']
-    df['H-PC'] = np.abs(df['High'] - df['price'].shift(1))
-    df['L-PC'] = np.abs(df['Low'] - df['price'].shift(1))
-
-    df['TR'] = df[['H-L', 'H-PC', 'L-PC']].max(axis=1)
-    df[f"ATR_{period}"] = df['TR'].rolling(period).mean()
-
-    df.drop(columns=['H-L','H-PC','L-PC','TR'], axis=1, inplace=True, errors='ignore')
-
-  
-  def run(self):
-    self.sma(20)
-    self.sma(100)
-    self.sma(200)
-    self.bollinger()
-    self.atr()
-    
-
-  
-  
-
+    def calculate_all(self, params):
+        df = self.data
+        
+        # המרה למספרים שלמים (התיקון לשגיאה שקיבלת)
+        p_fast = int(params['sma_fast'])
+        p_slow = int(params['sma_slow'])
+        p_trend = int(params['sma_trend'])
+        p_bb = int(params['bb_period'])
+        p_atr = int(params['atr_period'])
+        
+        # 1. SMA
+        df[f"SMA_{p_fast}"] = df['price'].rolling(p_fast).mean()
+        df[f"SMA_{p_slow}"] = df['price'].rolling(p_slow).mean()
+        df[f"SMA_{p_trend}"] = df['price'].rolling(p_trend).mean()
+        
+        # 2. Bollinger Bands
+        bb_std = params['bb_std']
+        ma = df['price'].rolling(p_bb).mean()
+        sigma = df['price'].rolling(p_bb).std()
+        
+        df['BB_upper'] = ma + (bb_std * sigma)
+        df['BB_lower'] = ma - (bb_std * sigma)
+        
+        # 3. ATR
+        high = df['High']
+        low = df['Low']
+        close = df['price'].shift(1)
+        
+        tr1 = high - low
+        tr2 = np.abs(high - close)
+        tr3 = np.abs(low - close)
+        tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+        
+        df[f"ATR_{p_atr}"] = tr.rolling(p_atr).mean()
+        df['ATR_50'] = tr.rolling(50).mean()
+        
+        self.data = df.dropna()

@@ -1,41 +1,79 @@
-import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import yfinance as yf
+import numpy as np
+import os
 
-# df = pd.read_csv('data/df60d.csv', parse_dates=['Datetime'], index_col='Datetime')
+class DataLoad:
+    """
+    Handles data loading, cleaning, and feature engineering (Sessions, Returns).
+    """
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.data = None
 
-class DataLoad():
-  def __init__(self, df):
-    self.raw_data = df
-    self.data = df
+    def process_data(self):
+        """
+        Loads data, cleans columns, sets index, calculates returns,
+        and defines trading sessions.
+        """
+        if not os.path.exists(self.file_path):
+            raise FileNotFoundError(f"File not found: {self.file_path}")
 
-  def process_data(self):
-    df = self.data.copy()
+        # 1. Load File (Handle formats)
+        try:
+            df = pd.read_csv(self.file_path)
+            if len(df.columns) < 2:
+                df = pd.read_csv(self.file_path, sep='\t', encoding='utf-16')
+        except:
+            df = pd.read_csv(self.file_path, sep='\t')
 
-    df = df.rename(columns={'Close':'price'})
-    df['returns'] = np.log(df['price'] / df['price'].shift(1))
+        # 2. Clean Column Names
+        df.columns = df.columns.str.strip().str.replace('<', '').str.replace('>', '').str.lower()
+        
+        # 3. Rename to Standard
+        rename_map = {
+            'date': 'Date', 'time': 'Time',
+            'close': 'price', 'open': 'Open', 'high': 'High', 'low': 'Low',
+            'tickvol': 'Volume', 'vol': 'Volume'
+        }
+        df.rename(columns=rename_map, inplace=True)
 
-    # convert column to date type
-    df.index = pd.to_datetime(df.index)
-    df['hour'] = df.index.hour
-    df['date'] = df.index.date  
+        # 4. Datetime Index
+        if 'Date' in df.columns and 'Time' in df.columns:
+            df['Datetime'] = pd.to_datetime(df['Date'].astype(str) + ' ' + df['Time'].astype(str))
+        elif 'datetime' in df.columns:
+            df['Datetime'] = pd.to_datetime(df['datetime'])
+        else:
+            # Fallback search
+            date_col = [c for c in df.columns if 'date' in c.lower()]
+            if date_col:
+                df['Datetime'] = pd.to_datetime(df[date_col[0]])
+            else:
+                raise KeyError("Date/Time columns missing.")
 
+        df.set_index('Datetime', inplace=True)
+        df.sort_index(inplace=True)
+        
+        # 5. Calculate Returns
+        df['returns'] = np.log(df['price'] / df['price'].shift(1))
+        
+        # 6. --- Define Sessions (Added Back) ---
+        # We use vectorization (np.select) for speed instead of loops
+        hours = df.index.hour
+        
+        conditions = [
+            (hours >= 2) & (hours < 10),   # Asia
+            (hours >= 10) & (hours < 15),  # London
+            (hours >= 15) & (hours <= 23), # NY
+            (hours >= 0) & (hours < 2)     # Deadzone
+        ]
+        
+        choices = ['asia', 'london', 'ny', 'deadzone']
+        
+        # Assign session column
+        df['session'] = np.select(conditions, choices, default='deadzone')
 
-    conditions = [
-      (df['hour'] >= 2) & (df['hour'] < 10),
-      (df['hour'] >= 10) & (df['hour'] < 15),
-      (df['hour'] >= 15) & (df['hour'] <= 23),
-      (df['hour'] >= 0) & (df['hour'] < 2)
-    ]
-
-    choices = ['asia', 'london', 'ny', 'deadzone']
-    df['sessions'] = np.select(conditions, choices, default='deadzone')
-
-    df.dropna(inplace=True)
-    self.data = df   
-    return self.data
-    
-  
-  
-  
+        # 7. Final Cleanup
+        required_cols = ['price', 'High', 'Low', 'returns', 'session']
+        self.data = df[required_cols].dropna().copy()
+        
+        return self.data
