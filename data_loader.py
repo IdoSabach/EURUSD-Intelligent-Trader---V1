@@ -52,6 +52,8 @@ class DataLoad:
 
         df.set_index('Datetime', inplace=True)
         df.sort_index(inplace=True)
+
+        df = df[~df.index.duplicated(keep='first')]
         
         # 5. Calculate Returns
         df['returns'] = np.log(df['price'] / df['price'].shift(1))

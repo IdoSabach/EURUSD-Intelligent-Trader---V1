@@ -7,11 +7,13 @@ import pandas as pd
 # ==========================================
 # ⚙️ הגדרות
 # ==========================================
-FILE_PATH = 'data/EURUSD_H1_MT5.csv'
-MIN_TRADES = 30  
+# וודא ששם הקובץ תואם לקובץ הנתונים שלך בתיקייה!
+FILE_PATH = 'data/365d-1H.csv' 
+MIN_TRADES = 30   
 # ==========================================
 
 def run_auto_pilot():
+    # --- 1. טעינת נתונים ---
     print(f"--- 1. Loading Data: {FILE_PATH} ---")
     try:
         loader = DataLoad(FILE_PATH)
@@ -21,6 +23,7 @@ def run_auto_pilot():
         print(f"Error: {e}")
         return
 
+    # --- 2. אופטימיזציה ---
     print("\n--- 2. Running Optimization (Finding Best Params) ---")
     opt = Optimizer(df)
     results = opt.optimize() 
@@ -29,28 +32,30 @@ def run_auto_pilot():
         print("No trades generated.")
         return
 
-    # --- סינון ובחירת המנצח ---
+    # --- 3. סינון ובחירת מנצח ---
     valid_results = results[results['Total Trades'] >= MIN_TRADES].copy()
     
     if valid_results.empty:
-        print(f"Optimization finished, but no strategy met the trades requirement.")
+        print(f"Optimization finished, but no strategy met the {MIN_TRADES} trades requirement.")
         return
 
     print("\n======= 🏆 TOP 10 CONFIGURATIONS 🏆 =======")
     
     # מיון לפי רווח נקי
-    top_results = valid_results.sort_values('Total Profit ($)', ascending=False).head(10)
+    top_results = valid_results.sort_values('Total Profit ($)', ascending=False)
     
-    # הדפסה מורחבת כדי לראות את כל ההבדלים
+    # תצוגת טבלה
     cols_to_show = [
         'Total Profit ($)', 'Max Drawdown ($)', 'Profit Factor', 'Win Rate (%)', 
-        'sl_multiplier', 'tp_multiplier', 'be_multiplier', # ניהול כסף
-        'sma_fast', 'sma_slow', 'bb_std' # אינדיקטורים
+        'sl_multiplier', 'tp_multiplier', 'be_multiplier',
+        'sma_fast', 'sma_slow', 'bb_std'
     ]
+    print(top_results.head(10)[cols_to_show].to_string(index=False))
     
-    print(top_results[cols_to_show].to_string(index=False))
+    # === גרף מרוץ הבוטים (ספגטי) ===
+    viz.plot_optimization_race(df, top_results, Backtester, top_n=50)
     
-    # --- בחירת המנצח ---
+    # --- 4. הרצת המנצח ---
     best_row = top_results.iloc[0]
     best_params = best_row.to_dict()
     
@@ -64,14 +69,21 @@ def run_auto_pilot():
 
     print(f"Running Re-Test for Charting...")
 
-    # --- הרצה סופית לויזואליזציה ---
-    # שימוש במחלקה הנכונה: Backtester
+    # יצירת בוט עם גודל פוזיציה אמיתי (1000 יחידות = 0.01 לוט)
     champion_bot = Backtester(df, params=best_params, position_size=1000)
     final_metrics = champion_bot.run_backtest()
     
+    # הדפסת הדוח המלא (כולל המדדים החדשים כמו Avg Duration)
     champion_bot.print_summary()
     
+    # === תוספת: הדפסת דוגמה מיומן העסקאות ===
     if not champion_bot.trade_log.empty:
+        print("\n📜 Sample Trades (First 5):")
+        # בוחרים עמודות מעניינות להצגה
+        log_cols = ['entry_time', 'trade_type', 'pnl_usd', 'duration']
+        print(champion_bot.trade_log[log_cols].head(5).to_string(index=False))
+
+        # ציור הגרף הסופי
         viz.plot_performance(df, champion_bot.trade_log, final_metrics)
     else:
         print("No trades to plot.")

@@ -31,11 +31,11 @@ class Optimizer:
             'sma_slow': list(range(50, 160, 10)), 
             'sma_trend': [200], 
             'bb_period': [20],
-            'bb_std': [round(x, 1) for x in np.arange(2.0, 2.6, 0.1)], 
+            'bb_std': [round(x, 1) for x in np.arange(2.0, 2.6, 0.2)], 
             'atr_period': [14],
             'range_atr_filter': [0.8],
-            'sl_multiplier': [round(x, 1) for x in np.arange(1.5, 3.1, 0.1)],
-            'tp_multiplier': [round(x, 1) for x in np.arange(2.0, 6.5, 0.5)],
+            'sl_multiplier': [round(x, 1) for x in np.arange(1.5, 3.1, 0.25)],
+            'tp_multiplier': [round(x, 1) for x in np.arange(2.0, 7.5, 0.5)],
             'be_multiplier': [1.5, 100.0] 
         }
 

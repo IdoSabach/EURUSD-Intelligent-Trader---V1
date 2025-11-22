@@ -41,3 +41,46 @@ def plot_performance(df, trade_log, metrics):
     plt.tight_layout()
     
     plt.show()
+
+
+
+
+
+def plot_optimization_race(df, results, strategy_class, top_n=50):
+    print(f"\n--- Generating 'Bot Race' Chart for Top {top_n} Strategies ---")
+    plt.figure(figsize=(16, 8))
+    
+    top_results = results.sort_values('Total Profit ($)', ascending=False).head(top_n)
+    
+    # מבטיחים שהאינדקס הראשי ייחודי
+    common_index = df.index.unique()
+    all_curves = []
+
+    for i, row in top_results.iterrows():
+        params = row.to_dict()
+        bot = strategy_class(df, params=params, position_size=1000)
+        bot.run_backtest()
+        
+        if not bot.trade_log.empty:
+            trades = bot.trade_log.sort_values('exit_time')
+            # קיבוץ רווחים לפי זמן יציאה (למקרה שיש כמה באותו זמן)
+            pnl_series = pd.Series(data=trades['pnl_usd'].values, index=trades['exit_time'])
+            pnl_series = pnl_series.groupby(pnl_series.index).sum()
+            
+            # מתיחה על ציר הזמן המשותף
+            equity_curve = pnl_series.reindex(common_index).fillna(0).cumsum()
+            all_curves.append(equity_curve)
+            
+            color = 'blue' if i == top_results.index[0] else 'gray'
+            alpha = 1.0 if i == top_results.index[0] else 0.1
+            width = 2.5 if i == top_results.index[0] else 1.0
+            
+            plt.plot(equity_curve.index, equity_curve, color=color, alpha=alpha, linewidth=width)
+
+    plt.title(f"Robustness Test: Top {top_n} Strategies Performance", fontsize=14, fontweight='bold')
+    plt.ylabel("Profit ($)")
+    plt.axhline(0, color='black', linewidth=1)
+    plt.grid(True, alpha=0.2)
+    plt.tight_layout()
+    print("Chart loaded.")
+    plt.show()

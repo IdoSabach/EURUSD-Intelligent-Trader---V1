@@ -3,104 +3,84 @@ import pandas as pd
 from strategy import Strategy
 
 class Backtester(Strategy):
-    """
-    Executes the backtest simulation using a high-performance Numpy engine.
-    Handles trade execution, P&L calculation, and performance metrics.
-    """
-    def __init__(self, df, params=None, position_size=10):
+    def __init__(self, df, params=None, position_size=10000):
         super().__init__(df, params)
         self.position_size = position_size
         self.metrics = {}
         self.trade_log = pd.DataFrame()
 
     def run_backtest(self):
-        """
-        Full workflow: Strategy -> Simulation -> Metrics
-        """
         self.run_strategy()
-        self._generate_trade_log_numpy()
+        self.generate_trade_log()
         return self.calculate_metrics()
 
-    def _generate_trade_log_numpy(self):
-        """
-        Optimized simulation engine using Numpy arrays for speed.
-        Iterates through entry signals and scans future prices for exit conditions.
-        """
+    def generate_trade_log(self):
+        # ... (החלק הזה נשאר זהה לקוד הקודם, מעתיק לנוחות) ...
         df = self.data.copy()
-        
-        # Ensure Datetime is accessible
         if 'Datetime' not in df.columns:
             df = df.reset_index()
             if 'Datetime' not in df.columns and 'index' in df.columns:
                  df = df.rename(columns={'index': 'Datetime'})
 
-        # Convert DataFrame columns to Numpy arrays (Speed boost!)
         prices = df['price'].values
         highs = df['High'].values
         lows = df['Low'].values
         datetimes = df['Datetime'].values
         positions = df['position'].values
         
-        # Pre-calculated Exit Levels from Strategy
-        long_sl = df['long_sl_val'].values
-        long_tp = df['long_tp_val'].values
-        short_sl = df['short_sl_val'].values
-        short_tp = df['short_tp_val'].values
+        atr_col = f"ATR_{self.params['atr_period']}"
+        atrs = df[atr_col].values
+
+        sl_mult = self.params['sl_multiplier']
+        tp_mult = self.params['tp_multiplier']
+        be_mult = self.params.get('be_multiplier', 100)
 
         trades_list = []
-        
-        # Find indices where a trade starts
         entry_indices = np.where(positions != 0)[0]
 
         for idx in entry_indices:
-            # Stop if not enough data points left
             if idx >= len(prices) - 1: continue
             
-            entry_type = positions[idx] # 1 (Long) or -1 (Short)
+            entry_type = positions[idx]
             entry_price = prices[idx]
+            atr = atrs[idx]
             entry_time = datetimes[idx]
             
-            # Get targets for this specific trade
-            if entry_type == 1:
-                sl = long_sl[idx]
-                tp = long_tp[idx]
-            else:
-                sl = short_sl[idx]
-                tp = short_tp[idx]
+            if entry_type == 1: # Long
+                sl = entry_price - (atr * sl_mult)
+                tp = entry_price + (atr * tp_mult)
+                be_trigger = entry_price + (atr * be_mult)
+            else: # Short
+                sl = entry_price + (atr * sl_mult)
+                tp = entry_price - (atr * tp_mult)
+                be_trigger = entry_price - (atr * be_mult)
             
+            is_be_active = False
             exit_idx = -1
-            exit_price = entry_price
+            exit_price = entry_price # Default
             
-            # Slice arrays for future candles
             search_highs = highs[idx+1:]
             search_lows = lows[idx+1:]
             
-            # --- Fast Inner Loop: Scan for Exit ---
             for i in range(len(search_highs)):
                 current_high = search_highs[i]
                 current_low = search_lows[i]
                 
-                if entry_type == 1: # Long Logic
-                    if current_low <= sl:   # Stop Loss Hit
-                        exit_price = sl
-                        exit_idx = idx + 1 + i
-                        break
-                    if current_high >= tp:   # Take Profit Hit
-                        exit_price = tp
-                        exit_idx = idx + 1 + i
-                        break
-                
-                else: # Short Logic
-                    if current_high >= sl:   # Stop Loss Hit
-                        exit_price = sl
-                        exit_idx = idx + 1 + i
-                        break
-                    if current_low <= tp:   # Take Profit Hit
-                        exit_price = tp
-                        exit_idx = idx + 1 + i
-                        break
+                if entry_type == 1: # Long
+                    if current_low <= sl:   # SL
+                        exit_price = sl; exit_idx = idx + 1 + i; break
+                    if current_high >= tp:   # TP
+                        exit_price = tp; exit_idx = idx + 1 + i; break
+                    if not is_be_active and current_high >= be_trigger:
+                        sl = entry_price; is_be_active = True
+                else: # Short
+                    if current_high >= sl:   # SL
+                        exit_price = sl; exit_idx = idx + 1 + i; break
+                    if current_low <= tp:   # TP
+                        exit_price = tp; exit_idx = idx + 1 + i; break
+                    if not is_be_active and current_low <= be_trigger:
+                        sl = entry_price; is_be_active = True
             
-            # Record trade if exited
             if exit_idx != -1:
                 exit_time = datetimes[exit_idx]
                 ts_entry = pd.Timestamp(entry_time)
@@ -119,57 +99,82 @@ class Backtester(Strategy):
                     'entry_price': entry_price,
                     'exit_price': exit_price,
                     'pnl_usd': pnl_usd,
-                    'duration': duration,
-                    'duration_mins': duration.total_seconds() / 60
+                    'duration': duration
                 })
 
         self.trade_log = pd.DataFrame(trades_list)
-        return self.trade_log
+        return self.trade_log # חשוב להחזיר את ה-log לשימוש בתוך הפונקציה
 
     def calculate_metrics(self):
-        """Calculates KPI metrics for the strategy."""
+        """
+        חישוב מורחב של מדדים כולל משך זמן, ממוצעים ורצפים.
+        """
         trades = self.trade_log
+        if trades.empty:
+            return {'Total Trades': 0, 'Total Profit ($)': 0, 'Profit Factor': 0, 'Max Drawdown ($)': 0}
         
-        if trades.empty: 
-            return {
-                'Total Trades': 0, 'Total Profit ($)': 0, 'Profit Factor': 0, 
-                'Max Drawdown ($)': 0, 'Win Rate (%)': 0, 'Max Consec. Losses': 0
-            }
-        
+        # 1. בסיסי
         total_trades = len(trades)
-        gross_profit = trades[trades['pnl_usd'] > 0]['pnl_usd'].sum()
-        gross_loss = abs(trades[trades['pnl_usd'] <= 0]['pnl_usd'].sum())
+        wins = trades[trades['pnl_usd'] > 0]
+        losses = trades[trades['pnl_usd'] <= 0]
         
-        profit_factor = gross_profit / gross_loss if gross_loss != 0 else np.inf
+        gross_win = wins['pnl_usd'].sum()
+        gross_loss = abs(losses['pnl_usd'].sum())
         total_profit = trades['pnl_usd'].sum()
-        win_rate = (len(trades[trades['pnl_usd']>0]) / total_trades) * 100
         
-        # Drawdown Calculation
+        profit_factor = gross_win / gross_loss if gross_loss > 0 else 999
+        win_rate = (len(wins) / total_trades) * 100
+        
+        # 2. ממוצעים (Average Stats)
+        avg_win = wins['pnl_usd'].mean() if not wins.empty else 0
+        avg_loss = losses['pnl_usd'].mean() if not losses.empty else 0
+        risk_reward_ratio = abs(avg_win / avg_loss) if avg_loss != 0 else 0
+        
+        # 3. קיצון (Best/Worst)
+        best_trade = trades['pnl_usd'].max()
+        worst_trade = trades['pnl_usd'].min()
+        
+        # 4. משך זמן (Duration)
+        avg_duration = trades['duration'].mean()
+        
+        # 5. רצפים ו-Drawdown
         trades = trades.sort_values('exit_time')
         equity = trades['pnl_usd'].cumsum()
         dd = (equity - equity.cummax()).min()
 
-        # Consecutive Losses Calculation
+        # רצף הפסדים
         is_loss = trades['pnl_usd'] <= 0
+        cons_losses = 0
         if is_loss.any():
-            groups = (is_loss != is_loss.shift()).cumsum()
-            consecutive_losses = is_loss.groupby(groups).cumsum()
-            max_consec_losses = consecutive_losses[is_loss].max()
-            if pd.isna(max_consec_losses): max_consec_losses = 0
-        else:
-            max_consec_losses = 0
-        
+            cons_losses = is_loss.groupby((is_loss != is_loss.shift()).cumsum()).cumsum()[is_loss].max()
+            
+        # רצף נצחונות
+        is_win = trades['pnl_usd'] > 0
+        cons_wins = 0
+        if is_win.any():
+            cons_wins = is_win.groupby((is_win != is_win.shift()).cumsum()).cumsum()[is_win].max()
+
         self.metrics = {
             'Total Trades': int(total_trades),
+            'Total Profit ($)': round(total_profit, 2),
             'Profit Factor': round(profit_factor, 2),
             'Win Rate (%)': round(win_rate, 2),
-            'Total Profit ($)': round(total_profit, 2),
             'Max Drawdown ($)': round(dd, 2),
-            'Max Consec. Losses': int(max_consec_losses)
+            'Avg Win ($)': round(avg_win, 2),
+            'Avg Loss ($)': round(avg_loss, 2),
+            'Risk/Reward Ratio': round(risk_reward_ratio, 2),
+            'Best Trade ($)': round(best_trade, 2),
+            'Worst Trade ($)': round(worst_trade, 2),
+            'Max Consec. Wins': int(cons_wins),
+            'Max Consec. Losses': int(cons_losses),
+            'Avg Duration': str(avg_duration).split('.')[0] # פורמט יפה של זמן
         }
         return self.metrics
-        
+    
     def print_summary(self):
-        print("\n==== Strategy Performance Report ====")
+        print("\n" + "="*40)
+        print("📊 FULL STRATEGY REPORT")
+        print("="*40)
         for k, v in self.metrics.items():
-            print(f"{k:<20}: {v}")
+            print(f"{k:<25}: {v}")
+        print("="*40 + "\n")
