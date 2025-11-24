@@ -15,7 +15,6 @@ class Backtester(Strategy):
         return self.calculate_metrics()
 
     def generate_trade_log(self):
-        # ... (החלק הזה נשאר זהה לקוד הקודם, מעתיק לנוחות) ...
         df = self.data.copy()
         if 'Datetime' not in df.columns:
             df = df.reset_index()
@@ -103,7 +102,7 @@ class Backtester(Strategy):
                 })
 
         self.trade_log = pd.DataFrame(trades_list)
-        return self.trade_log # חשוב להחזיר את ה-log לשימוש בתוך הפונקציה
+        return self.trade_log
 
     def calculate_metrics(self):
         """

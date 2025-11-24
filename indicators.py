@@ -8,7 +8,6 @@ class Indicators:
     def calculate_all(self, params):
         df = self.data
         
-        # המרה למספרים שלמים (התיקון לשגיאה שקיבלת)
         p_fast = int(params['sma_fast'])
         p_slow = int(params['sma_slow'])
         p_trend = int(params['sma_trend'])

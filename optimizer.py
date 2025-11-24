@@ -4,14 +4,11 @@ import itertools
 from joblib import Parallel, delayed
 from backtester import Backtester
 
-# פונקציה חיצונית להרצה מקבילית (חובה לביצועים)
 def run_single_backtest_task(df, params):
     try:
-        # יצירת בוט חדש לכל הרצה
         bot = Backtester(df, params=params)
         metrics = bot.run_backtest()
         
-        # החזרת התוצאה + הפרמטרים שיצרו אותה
         metrics.update(params)
         return metrics
     except Exception as e:
@@ -40,11 +37,9 @@ class Optimizer:
         }
 
     def optimize(self):
-        # 1. יצירת הגריד הענק
         param_grid = self.get_monster_grid()
         keys, values = zip(*param_grid.items())
         
-        # יצירת כל הקומבינציות
         combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
         
         total = len(combinations)
@@ -58,7 +53,6 @@ class Optimizer:
             for params in combinations
         )
         
-        # 3. ניקוי תוצאות (הסרת שגיאות אם היו)
         clean_results = [r for r in results if r is not None]
         
         print(f"\n--- Finished! Analyzed {len(clean_results)} strategies. ---")

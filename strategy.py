@@ -36,7 +36,6 @@ class Strategy(Indicators):
         df = self.data
         p = self.params
         
-        # --- התיקון: המרה למספר שלם (int) כדי למנוע .0 בשם העמודה ---
         sma_fast = f"SMA_{int(p['sma_fast'])}"
         sma_slow = f"SMA_{int(p['sma_slow'])}"
         sma_trend = f"SMA_{int(p['sma_trend'])}"
@@ -64,7 +63,6 @@ class Strategy(Indicators):
 
     def _calculate_exit_levels(self):
         df = self.data
-        # גם כאן: המרה ל-int
         atr_col = f"ATR_{int(self.params['atr_period'])}"
         
         atr = df[atr_col]
