@@ -3,7 +3,7 @@ import pandas as pd
 from strategy import Strategy
 
 class Backtester(Strategy):
-    def __init__(self, df, params=None, position_size=100):
+    def __init__(self, df, params=None, position_size=1000):
         super().__init__(df, params)
         self.position_size = position_size
         self.metrics = {}

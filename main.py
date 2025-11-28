@@ -5,7 +5,7 @@ import visualization as viz
 import pandas as pd
 
 
-FILE_PATH = 'data/USDJPY=X-365D-1H.csv' 
+FILE_PATH = 'data/EURUSD-365D-1H.csv' 
 MIN_TRADES = 30   
 # ==========================================
 
