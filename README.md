@@ -1,4 +1,3 @@
-````markdown
 # 🚀 Algo-Trader Pro: Intelligent Quantitative Trading System
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python)
@@ -97,41 +96,3 @@ graph TD;
     Backtester --> Strategy(strategy.py);
     Strategy --> Indicators(indicators.py);
     Main --> Viz(visualization.py);
-````
-
-### 🧩 Module Breakdown
-
-1.  **`data_loader.py`:** Handles ingestion of raw CSV data from MT5/Yahoo, cleans data anomalies, and normalizes timezones.
-2.  **`indicators.py`:** A dedicated math library for calculating SMA, Bollinger Bands, and ATR dynamically.
-3.  **`strategy.py`:** Encapsulates the **"Hook" Logic** — buying only when price reverts into the bands during a confirmed trend.
-4.  **`backtester.py`:** The core engine. Uses **Vectorized NumPy arrays** to simulate years of trading in milliseconds, with intra-bar precision.
-5.  **`optimizer.py`:** Utilizes **Parallel Computing (Joblib)** to test thousands of parameter combinations across all CPU cores.
-6.  **`visualization.py`:** Generates professional financial charts, including Equity Curves and Trade Entry/Exit mapping.
-
------
-
-### 🚀 Usage Guide
-
-1.  **Setup Environment:**
-    ```bash
-    pip install pandas numpy matplotlib joblib yfinance
-    ```
-2.  **Prepare Data:**
-    Place your `EURUSD_H1.csv` file in the `data/` folder.
-3.  **Run Optimization:**
-    Set `MODE = 'OPTIMIZE'` in `main.py` and run.
-4.  **Run Champion:**
-    Set `MODE = 'CHAMPION'` and insert the best parameters to visualize results.
-
-<!-- end list -->
-
-```bash
-python main.py
-```
-
------
-
-**Developed by Ido Sabach** 👨‍💻
-
-```
-```
