@@ -1,0 +1,12 @@
+{
+    "sma_fast": 10,
+    "sma_slow": 120,
+    "sma_trend": 200,
+    "bb_period": 20,
+    "bb_std": 2.2,
+    "atr_period": 14,
+    "range_atr_filter": 0.8,
+    "sl_multiplier": 1.8,
+    "tp_multiplier": 5.0,
+    "be_multiplier": 100.0
+}

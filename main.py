@@ -3,10 +3,14 @@ from backtester import Backtester
 from optimizer import Optimizer
 import visualization as viz
 import pandas as pd
+import json  # <--- הוספנו את ספריית JSON
 
-
-FILE_PATH = 'data/EURUSD-365D-1H.csv' 
-MIN_TRADES = 30   
+# ==========================================
+# ⚙️ הגדרות מחקר
+# ==========================================
+FILE_PATH = 'data/EURUSD-365D-1H.csv'
+MIN_TRADES = 30  
+PARAMS_FILE = "best_params.json" # הקובץ שישמש את הבוט החי
 # ==========================================
 
 def run_auto_pilot():
@@ -19,7 +23,8 @@ def run_auto_pilot():
         print(f"Error: {e}")
         return
 
-    print("\n--- 2. Running Optimization (Finding Best Params) ---")
+    # --- שלב האופטימיזציה ---
+    print("\n--- 2. Running Optimization ---")
     opt = Optimizer(df)
     results = opt.optimize() 
 
@@ -27,51 +32,50 @@ def run_auto_pilot():
         print("No trades generated.")
         return
 
+    # סינון תוצאות
     valid_results = results[results['Total Trades'] >= MIN_TRADES].copy()
     
     if valid_results.empty:
-        print(f"Optimization finished, but no strategy met the {MIN_TRADES} trades requirement.")
+        print(f"Optimization finished, but no strategy met the requirements.")
         return
 
     print("\n======= 🏆 TOP 10 CONFIGURATIONS 🏆 =======")
-    
+    # מיון לפי רווח נקי
     top_results = valid_results.sort_values('Total Profit ($)', ascending=False)
     
     cols_to_show = [
         'Total Profit ($)', 'Max Drawdown ($)', 'Profit Factor', 'Win Rate (%)', 
         'sl_multiplier', 'tp_multiplier', 'be_multiplier',
-        'sma_fast', 'sma_slow', 'bb_std'
+        'sma_fast', 'sma_slow'
     ]
     print(top_results.head(10)[cols_to_show].to_string(index=False))
     
-    # viz.plot_optimization_race(df, top_results, Backtester, top_n=50)
-    
+    # --- שליפת המנצח ---
     best_row = top_results.iloc[0]
     best_params = best_row.to_dict()
     
-    print("\n--- 3. Auto-Selecting Champion ---")
+    # ניקוי פרמטרים מיותרים (אנחנו לא רוצים לשמור את ה'רווח' כפרמטר לאסטרטגיה)
+    clean_params = {k: v for k, v in best_params.items() if k in [
+        'sma_fast', 'sma_slow', 'sma_trend', 'bb_period', 'bb_std', 
+        'atr_period', 'range_atr_filter', 'sl_multiplier', 'tp_multiplier', 'be_multiplier'
+    ]}
+
+    print("\n--- 3. Saving Champion to File ---")
     print(f"Selected Strategy Profit: ${best_params['Total Profit ($)']}")
     
-    if best_params['be_multiplier'] >= 50:
-        print("Decision: Break-Even is OFF")
-    else:
-        print(f"Decision: Break-Even is ON (Trigger at {best_params['be_multiplier']} ATR)")
+    # === שמירת הקובץ לבוט החי ===
+    with open(PARAMS_FILE, "w") as f:
+        json.dump(clean_params, f, indent=4)
+    print(f"✅ Saved parameters to '{PARAMS_FILE}'. Live bot will use this!")
 
+    # --- ויזואליזציה ---
     print(f"Running Re-Test for Charting...")
-
-    champion_bot = Backtester(df, params=best_params, position_size=1000)
+    champion_bot = Backtester(df, params=clean_params, position_size=1000)
     final_metrics = champion_bot.run_backtest()
-    
     champion_bot.print_summary()
     
     if not champion_bot.trade_log.empty:
-        print("\n📜 Sample Trades (First 5):")
-        log_cols = ['entry_time', 'trade_type', 'pnl_usd', 'duration']
-        print(champion_bot.trade_log[log_cols].head(5).to_string(index=False))
-
         viz.plot_performance(df, champion_bot.trade_log, final_metrics)
-    else:
-        print("No trades to plot.")
 
 if __name__ == "__main__":
     run_auto_pilot()
