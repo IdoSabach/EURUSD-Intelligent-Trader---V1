@@ -5,16 +5,17 @@ import datetime
 import json
 import os
 from strategy import Strategy
+from telegram_notify import send_telegram_msg 
 
 # ==========================================
-# ⚙️ הגדרות ברוקר וניהול
+# ⚙️ הגדרות ברוקר
 # ==========================================
 SYMBOL = "EURUSD"       
 TIMEFRAME = mt5.TIMEFRAME_H1
-VOLUME = 0.02        # גודל פוזיציה קבוע (מיקרו לוט)
+VOLUME = 0.01           
 DEVIATION = 10          
 MAGIC_NUMBER = 999001   
-PARAMS_FILE = "best_params.json"
+PARAMS_FILE = "best_params.json" # הקובץ שממנו שואבים את המוח
 # ==========================================
 
 def load_best_params():
@@ -27,29 +28,27 @@ def load_best_params():
     with open(PARAMS_FILE, "r") as f:
         params = json.load(f)
     
-    print("\n✅ Loaded Strategy Parameters:")
-    print(json.dumps(params, indent=4))
+    print(f"\n✅ Loaded Strategy Parameters from {PARAMS_FILE}")
     return params
 
 def initialize_mt5():
     if not mt5.initialize():
-        print("❌ MT5 Initialize failed, error:", mt5.last_error())
+        print("❌ MT5 Initialize failed")
         quit()
     
     account = mt5.account_info()
     if not account:
-        print("❌ Failed to get account info. Please login to MT5.")
+        print("❌ Not connected to account")
         quit()
         
-    print(f"\n=== 🟢 LIVE TRADER CONNECTED ===")
-    print(f"Account: {account.login} | Server: {account.server}")
-    print(f"Balance: ${account.balance} | Equity: ${account.equity}")
-    print("================================")
+    # הודעת פתיחה לטלגרם
+    msg = f"🤖 <b>Bot Started Successfully!</b>\nAsset: {SYMBOL}\nMode: Auto-JSON Params"
+    print(msg)
+    send_telegram_msg(msg)
 
 def get_live_data():
     rates = mt5.copy_rates_from_pos(SYMBOL, TIMEFRAME, 0, 500)
     if rates is None: return None
-    
     df = pd.DataFrame(rates)
     df['time'] = pd.to_datetime(df['time'], unit='s')
     rename = {'time': 'Datetime', 'close': 'price', 'high': 'High', 'low': 'Low', 'open': 'Open', 'tick_volume': 'Volume'}
@@ -58,14 +57,13 @@ def get_live_data():
     return df
 
 def execute_trade(signal, price, sl, tp):
-    # בדיקת עסקאות קיימות
     positions = mt5.positions_get(symbol=SYMBOL)
     for pos in positions:
         if pos.magic == MAGIC_NUMBER:
-            print("⚠️ Bot position already open. Waiting...")
             return
 
     order_type = mt5.ORDER_TYPE_BUY if signal == 1 else mt5.ORDER_TYPE_SELL
+    type_str = "BUY 🟢" if signal == 1 else "SELL 🔴"
     
     request = {
         "action": mt5.TRADE_ACTION_DEAL,
@@ -77,57 +75,81 @@ def execute_trade(signal, price, sl, tp):
         "tp": tp,
         "deviation": DEVIATION,
         "magic": MAGIC_NUMBER,
-        "comment": "Algo-Pro AI",
+        "comment": "Algo-Pro Bot",
         "type_time": mt5.ORDER_TIME_GTC,
         "type_filling": mt5.ORDER_FILLING_IOC,
     }
 
-    print(f"🚀 EXECUTING { 'BUY' if signal==1 else 'SELL' } | SL: {sl:.5f} | TP: {tp:.5f}")
     result = mt5.order_send(request)
     
-    if result.retcode != mt5.TRADE_RETCODE_DONE:
-        print("❌ Order Failed:", result.comment)
+    if result.retcode == mt5.TRADE_RETCODE_DONE:
+        msg = f"""
+🚀 <b>New Trade Opened!</b>
+---------------------
+<b>Type:</b> {type_str}
+<b>Price:</b> {price}
+<b>SL:</b> {sl:.5f}
+<b>TP:</b> {tp:.5f}
+<b>Size:</b> {VOLUME}
+        """
+        print(msg)
+        send_telegram_msg(msg)
     else:
-        print(f"✅ Order Placed! Ticket: {result.order}")
+        print("❌ Order Failed:", result.comment)
 
 def run_live():
-    # 1. טעינת המוח
-    params = load_best_params()
+    # 1. טעינת המוח מהקובץ (התיקון החשוב!)
+    strategy_params = load_best_params()
     
-    # 2. חיבור לגוף
+    # 2. חיבור
     initialize_mt5()
     
-    print(f"🤖 Bot is running on {SYMBOL} (H1)...")
+    hourly_msg_sent = False
     
     while True:
         try:
-            # משיכת נתונים
+            now = datetime.datetime.now()
+
+            # --- 🔔 עדכון שעתי (Hourly Heartbeat) ---
+            if now.minute == 0 and not hourly_msg_sent:
+                tick = mt5.symbol_info_tick(SYMBOL)
+                account = mt5.account_info()
+                current_price = (tick.ask + tick.bid) / 2
+                
+                status_msg = f"""
+⏱ <b>Hourly Update ({now.strftime('%H:%M')})</b>
+---------------------
+✅ Status: <b>Running</b>
+💶 Price: {current_price:.5f}
+💰 Equity: ${account.equity}
+---------------------
+                """
+                send_telegram_msg(status_msg)
+                print(f"Sent hourly update at {now}")
+                hourly_msg_sent = True 
+            
+            elif now.minute != 0:
+                hourly_msg_sent = False
+
+            # --- לוגיקת המסחר ---
             df = get_live_data()
             if df is None:
                 time.sleep(10)
                 continue
 
-            # חישוב אסטרטגיה
-            strategy = Strategy(df, params=params)
+            # שימוש בפרמטרים שנטענו מה-JSON
+            strategy = Strategy(df, params=strategy_params)
             strategy.run_strategy()
             
-            # בדיקת הנר האחרון שנסגר (לפני אחרון)
             last_candle = strategy.data.iloc[-2]
             signal = last_candle['position']
-            price = last_candle['price']
             
-            # הדפסת סטטוס
-            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-            print(f"\r⏳ {timestamp} | Close: {price:.5f} | Signal: {signal} ", end="")
+            print(f"\r⏳ {now.strftime('%H:%M:%S')} | Price: {last_candle['price']:.5f} | Signal: {signal} ", end="")
             
             if signal != 0:
-                print("\n💡 SIGNAL RECEIVED!")
-                
-                # קבלת מחיר שוק עדכני לביצוע
                 tick = mt5.symbol_info_tick(SYMBOL)
                 market_price = tick.ask if signal == 1 else tick.bid
                 
-                # שליפת יעדים
                 if signal == 1:
                     sl = last_candle['long_sl_val']
                     tp = last_candle['long_tp_val']
@@ -136,8 +158,6 @@ def run_live():
                     tp = last_candle['short_tp_val']
                 
                 execute_trade(signal, market_price, sl, tp)
-                
-                # מניעת כפילות - לישון עד הנר הבא
                 print("💤 Signal processed. Sleeping for 1 hour...")
                 time.sleep(3600) 
             
@@ -145,6 +165,7 @@ def run_live():
 
         except Exception as e:
             print(f"\n❌ Error: {e}")
+            send_telegram_msg(f"⚠️ <b>CRITICAL ERROR</b>\nBot crashed: {e}")
             time.sleep(10)
 
 if __name__ == "__main__":
