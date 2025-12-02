@@ -1,12 +1,15 @@
 # 🚀 Algo-Trader Pro: Intelligent Quantitative Trading System
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
-![Status](https://img.shields.io/badge/Status-Production-brightgreen?style=for-the-badge)
-![Strategy](https://img.shields.io/badge/Strategy-Trend%20Confirmation-orange?style=for-the-badge)
+![Platform](https://img.shields.io/badge/Platform-MetaTrader%205-blue?style=for-the-badge)
+![VPS](https://img.shields.io/badge/Deployment-24%2F7%20VPS-blueviolet?style=for-the-badge)
+![Telegram](https://img.shields.io/badge/Notifications-Telegram%20Bot-2ca5e0?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Live%20Production-brightgreen?style=for-the-badge)
 
 **Algo-Trader Pro** is a comprehensive algorithmic trading suite designed for high-precision execution in Forex and Commodities markets.
 The system utilizes a **"Trend Confirmation Hook"** strategy, enhanced by a vectorized NumPy backtesting engine and parallel hyperparameter optimization.
+
+The system is fully deployed on a **cloud VPS** for 24/7 autonomous trading, featuring a robust watchdog mechanism and real-time Telegram monitoring.
 
 ---
 
@@ -84,6 +87,25 @@ Each asset has been independently optimized to fit its unique volatility signatu
 
 ---
 
+# 📡 Live Deployment & Monitoring
+
+The system is deployed on a dedicated **Windows VPS** (Contabo) in the London region for ultra-low latency execution.
+
+### 🤖 24/7 Autonomous Operation
+* **Watchdog Script:** A custom `.bat` wrapper monitors the bot process. If a crash or disconnect occurs, the bot restarts automatically within 5 seconds.
+* **Startup Automation:** Integrated with Windows Task Scheduler to ensure the bot launches automatically upon server reboot.
+
+### 📱 Smart Telegram Integration
+The bot communicates directly with the trader via a dedicated Telegram Bot API:
+* **🔔 Trade Alerts:** Instant notification on Entry (Buy/Sell) including Price, SL, and TP levels.
+* **💓 Hourly Heartbeat:** Sends a status report every hour (XX:00) containing:
+    * System Status (Running/Idle)
+    * Current Asset Price
+    * Account Equity & Balance
+* **⚠️ Error Reporting:** Critical exceptions or connection losses are immediately pushed to the user's phone.
+
+---
+
 # 🏗️ Technical Architecture
 
 ### 📂 Project Structure
@@ -95,4 +117,10 @@ graph TD;
     Main --> Backtester;
     Backtester --> Strategy(strategy.py);
     Strategy --> Indicators(indicators.py);
+    
+    subgraph Live Trading
+    Live(live_trader.py) --> Strategy;
+    Live --> Telegram(telegram_notify.py);
+    end
+    
     Main --> Viz(visualization.py);
