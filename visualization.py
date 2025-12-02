@@ -1,10 +1,6 @@
 import matplotlib.pyplot as plt
-import pandas as pd
 
 def plot_performance(df, trade_log, metrics):
-    """
-    מצייר גרף של הביצועים: מחיר, בולינגר, ועסקאות.
-    """
     print("Loading chart...")
     plt.figure(figsize=(16, 8))
     

@@ -112,7 +112,6 @@ class Backtester(Strategy):
         if trades.empty:
             return {'Total Trades': 0, 'Total Profit ($)': 0, 'Profit Factor': 0, 'Max Drawdown ($)': 0}
         
-        # 1. בסיסי
         total_trades = len(trades)
         wins = trades[trades['pnl_usd'] > 0]
         losses = trades[trades['pnl_usd'] <= 0]
@@ -124,30 +123,24 @@ class Backtester(Strategy):
         profit_factor = gross_win / gross_loss if gross_loss > 0 else 999
         win_rate = (len(wins) / total_trades) * 100
         
-        # 2. ממוצעים (Average Stats)
         avg_win = wins['pnl_usd'].mean() if not wins.empty else 0
         avg_loss = losses['pnl_usd'].mean() if not losses.empty else 0
         risk_reward_ratio = abs(avg_win / avg_loss) if avg_loss != 0 else 0
         
-        # 3. קיצון (Best/Worst)
         best_trade = trades['pnl_usd'].max()
         worst_trade = trades['pnl_usd'].min()
         
-        # 4. משך זמן (Duration)
         avg_duration = trades['duration'].mean()
         
-        # 5. רצפים ו-Drawdown
         trades = trades.sort_values('exit_time')
         equity = trades['pnl_usd'].cumsum()
         dd = (equity - equity.cummax()).min()
 
-        # רצף הפסדים
         is_loss = trades['pnl_usd'] <= 0
         cons_losses = 0
         if is_loss.any():
             cons_losses = is_loss.groupby((is_loss != is_loss.shift()).cumsum()).cumsum()[is_loss].max()
             
-        # רצף נצחונות
         is_win = trades['pnl_usd'] > 0
         cons_wins = 0
         if is_win.any():
@@ -166,7 +159,7 @@ class Backtester(Strategy):
             'Worst Trade ($)': round(worst_trade, 2),
             'Max Consec. Wins': int(cons_wins),
             'Max Consec. Losses': int(cons_losses),
-            'Avg Duration': str(avg_duration).split('.')[0] # פורמט יפה של זמן
+            'Avg Duration': str(avg_duration).split('.')[0]
         }
         return self.metrics
     

@@ -15,7 +15,7 @@ MAGIC_NUMBER = 999001
 PARAMS_FILE = "best_params.json"
 
 def load_best_params():
-    """טוען את הפרמטרים המנצחים מהקובץ שיצר ה-Optimizer"""
+    """Optimizer"""
     if not os.path.exists(PARAMS_FILE):
         print(f"❌ Error: '{PARAMS_FILE}' not found!")
         print("Please run 'main.py' first to generate strategy parameters.")
@@ -199,8 +199,6 @@ Restarting automatically in 5 seconds...
 # from telegram_notify import send_telegram_msg 
 
 # # ==========================================
-# # ⚙️ הגדרות ברוקר
-# # ==========================================
 # SYMBOL = "EURUSD"       
 # TIMEFRAME = mt5.TIMEFRAME_H1
 # VOLUME = 0.01           
@@ -225,7 +223,6 @@ Restarting automatically in 5 seconds...
 #         print("❌ Not connected to account")
 #         quit()
     
-#     # הודעת פתיחה - מצב בדיקה
 #     msg = f"🧪 <b>TEST MODE STARTED!</b>\nSending msgs every 10s..."
 #     print(msg)
 #     send_telegram_msg(msg)
@@ -277,8 +274,6 @@ Restarting automatically in 5 seconds...
 #         try:
 #             now = datetime.datetime.now()
 
-#             # --- 🔔 בדיקת דופק מהירה (TEST) ---
-#             # אין תנאי של שעה! שולח תמיד.
 #             tick = mt5.symbol_info_tick(SYMBOL)
 #             price_str = f"{tick.bid:.5f}" if tick else "Unknown"
             
@@ -287,7 +282,6 @@ Restarting automatically in 5 seconds...
 #             send_telegram_msg(status_msg)
 #             # ----------------------------------
 
-#             # --- לוגיקת המסחר (עדיין עובדת ברקע) ---
 #             df = get_live_data()
 #             if df is not None:
 #                 strategy = Strategy(df, params=params)
@@ -299,7 +293,6 @@ Restarting automatically in 5 seconds...
 #                     tick = mt5.symbol_info_tick(SYMBOL)
 #                     market_price = tick.ask if signal == 1 else tick.bid
                     
-#                     # חישוב סטופים
 #                     if signal == 1:
 #                         sl = last_candle['long_sl_val']
 #                         tp = last_candle['long_tp_val']
@@ -309,7 +302,6 @@ Restarting automatically in 5 seconds...
                     
 #                     execute_trade(signal, market_price, sl, tp)
             
-#             # המתנה קצרה של 10 שניות בלבד לבדיקה
 #             time.sleep(10)
 
 #         except Exception as e:

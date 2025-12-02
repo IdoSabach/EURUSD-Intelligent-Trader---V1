@@ -20,8 +20,8 @@ class Optimizer:
 
     def get_monster_grid(self):
         """
-        יוצר רשת חיפוש ענקית ודינמית באמצעות numpy ranges.
-        מכסה כל פינה אפשרית באסטרטגיה.
+         numpy ranges.
+
         """
         return {
             'sma_fast': list(range(5, 50, 5)), 

@@ -2,15 +2,12 @@ from data_loader import DataLoad
 from backtester import Backtester
 from optimizer import Optimizer
 import visualization as viz
-import pandas as pd
-import json  # <--- הוספנו את ספריית JSON
+import json 
 
-# ==========================================
-# ⚙️ הגדרות מחקר
 # ==========================================
 FILE_PATH = 'data/EURUSD-365D-1H.csv'
 MIN_TRADES = 30  
-PARAMS_FILE = "best_params.json" # הקובץ שישמש את הבוט החי
+PARAMS_FILE = "best_params.json"
 # ==========================================
 
 def run_auto_pilot():
@@ -23,7 +20,6 @@ def run_auto_pilot():
         print(f"Error: {e}")
         return
 
-    # --- שלב האופטימיזציה ---
     print("\n--- 2. Running Optimization ---")
     opt = Optimizer(df)
     results = opt.optimize() 
@@ -32,7 +28,6 @@ def run_auto_pilot():
         print("No trades generated.")
         return
 
-    # סינון תוצאות
     valid_results = results[results['Total Trades'] >= MIN_TRADES].copy()
     
     if valid_results.empty:
@@ -40,7 +35,6 @@ def run_auto_pilot():
         return
 
     print("\n======= 🏆 TOP 10 CONFIGURATIONS 🏆 =======")
-    # מיון לפי רווח נקי
     top_results = valid_results.sort_values('Total Profit ($)', ascending=False)
     
     cols_to_show = [
@@ -50,11 +44,9 @@ def run_auto_pilot():
     ]
     print(top_results.head(10)[cols_to_show].to_string(index=False))
     
-    # --- שליפת המנצח ---
     best_row = top_results.iloc[0]
     best_params = best_row.to_dict()
     
-    # ניקוי פרמטרים מיותרים (אנחנו לא רוצים לשמור את ה'רווח' כפרמטר לאסטרטגיה)
     clean_params = {k: v for k, v in best_params.items() if k in [
         'sma_fast', 'sma_slow', 'sma_trend', 'bb_period', 'bb_std', 
         'atr_period', 'range_atr_filter', 'sl_multiplier', 'tp_multiplier', 'be_multiplier'
@@ -63,12 +55,10 @@ def run_auto_pilot():
     print("\n--- 3. Saving Champion to File ---")
     print(f"Selected Strategy Profit: ${best_params['Total Profit ($)']}")
     
-    # === שמירת הקובץ לבוט החי ===
     with open(PARAMS_FILE, "w") as f:
         json.dump(clean_params, f, indent=4)
     print(f"✅ Saved parameters to '{PARAMS_FILE}'. Live bot will use this!")
 
-    # --- ויזואליזציה ---
     print(f"Running Re-Test for Charting...")
     champion_bot = Backtester(df, params=clean_params, position_size=1000)
     final_metrics = champion_bot.run_backtest()
