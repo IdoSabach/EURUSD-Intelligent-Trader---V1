@@ -7,16 +7,12 @@ import os
 from strategy import Strategy
 from telegram_notify import send_telegram_msg 
 
-# ==========================================
-# ⚙️ הגדרות ברוקר
-# ==========================================
 SYMBOL = "EURUSD"       
 TIMEFRAME = mt5.TIMEFRAME_H1
 VOLUME = 0.01           
 DEVIATION = 10          
 MAGIC_NUMBER = 999001   
-PARAMS_FILE = "best_params.json" # הקובץ שממנו שואבים את המוח
-# ==========================================
+PARAMS_FILE = "best_params.json"
 
 def load_best_params():
     """טוען את הפרמטרים המנצחים מהקובץ שיצר ה-Optimizer"""
@@ -41,7 +37,6 @@ def initialize_mt5():
         print("❌ Not connected to account")
         quit()
         
-    # הודעת פתיחה לטלגרם
     msg = f"🤖 <b>Bot Started Successfully!</b>\nAsset: {SYMBOL}\nMode: Auto-JSON Params"
     print(msg)
     send_telegram_msg(msg)
@@ -98,7 +93,6 @@ def execute_trade(signal, price, sl, tp):
         print("❌ Order Failed:", result.comment)
 
 def run_live():
-    # 1. טעינת המוח מהקובץ (התיקון החשוב!)
     strategy_params = load_best_params()
     
     # 2. חיבור
@@ -110,7 +104,6 @@ def run_live():
         try:
             now = datetime.datetime.now()
 
-            # --- 🔔 עדכון שעתי (Hourly Heartbeat) ---
             if now.minute == 0 and not hourly_msg_sent:
                 tick = mt5.symbol_info_tick(SYMBOL)
                 account = mt5.account_info()
@@ -131,13 +124,11 @@ def run_live():
             elif now.minute != 0:
                 hourly_msg_sent = False
 
-            # --- לוגיקת המסחר ---
             df = get_live_data()
             if df is None:
                 time.sleep(10)
                 continue
 
-            # שימוש בפרמטרים שנטענו מה-JSON
             strategy = Strategy(df, params=strategy_params)
             strategy.run_strategy()
             
@@ -168,5 +159,29 @@ def run_live():
             send_telegram_msg(f"⚠️ <b>CRITICAL ERROR</b>\nBot crashed: {e}")
             time.sleep(10)
 
+import traceback
+
 if __name__ == "__main__":
-    run_live()
+    try:
+        run_live()
+        
+    except KeyboardInterrupt:
+        print("🛑 Bot stopped by user.")
+        send_telegram_msg("🛑 <b>Bot Stopped Manually</b>")
+        
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        print("❌ CRITICAL ERROR OCCURRED!")
+        print(error_trace)
+        
+        crash_msg = f"""
+⚠️ <b>CRITICAL ALERT: BOT CRASHED!</b>
+-----------------------------
+The bot stopped working.
+<b>Error:</b> {str(e)}
+-----------------------------
+Restarting automatically in 5 seconds...
+        """
+        send_telegram_msg(crash_msg)
+        
+        raise e
